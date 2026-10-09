@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Newsletter Studio</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#1c2033;--mute:#6b7189;--line:#e2e5f0;--acc:#4f46e5;--acc2:#eef0ff;--ok:#16a34a;--bad:#dc2626;--s1:#0ea5e9;--s2:#8b5cf6;--s3:#f59e0b}
+@media (prefers-color-scheme:dark){:root{--bg:#12141c;--card:#1b1e2b;--ink:#e8eaf4;--mute:#9399b2;--line:#2c3044;--acc:#818cf8;--acc2:#262a47}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,Segoe UI,sans-serif}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;border-radius:8px}
+button:hover{border-color:var(--acc)}
+button.p{background:var(--acc);color:#fff;border-color:var(--acc)}
+button.p:disabled,button:disabled{opacity:.5;cursor:wait}
+button.sm{padding:2px 8px;font-size:12px}
+input,textarea,select{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px;width:100%}
+textarea{resize:vertical;min-height:80px}
+input:focus,textarea:focus,select:focus,[contenteditable]:focus{outline:2px solid var(--acc);outline-offset:1px}
+label{display:block;font-size:12px;font-weight:600;color:var(--mute);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+header{display:flex;align-items:center;gap:8px;padding:10px 20px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0 12px 0 0}
+#ptabs{display:flex;gap:4px;flex:1;overflow-x:auto}
+.ptab{border-radius:8px 8px 0 0;border-bottom:3px solid transparent;background:none;border-color:transparent}
+.ptab.on{border-bottom-color:var(--acc);color:var(--acc);font-weight:600}
+main{max-width:1250px;margin:0 auto;padding:16px 20px 60px}
+.sub{display:flex;gap:6px;margin-bottom:14px;align-items:center}
+.sub button.on{background:var(--acc2);border-color:var(--acc);color:var(--acc);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hint{color:var(--mute);font-size:13px}
+h2{font-size:17px;margin:0 0 8px}
+/* mind map */
+#mapwrap{overflow:auto;padding:0}
+#map{position:relative;min-width:760px}
+#map svg{position:absolute;inset:0;pointer-events:none}
+.node{position:absolute;border-radius:10px;padding:6px 12px;border:2px solid var(--line);background:var(--card);display:flex;align-items:center;gap:6px;font-size:14px}
+.node .t{outline:none;min-width:30px;white-space:nowrap}
+.root{font-weight:700;font-size:16px;background:var(--acc);color:#fff;border-color:var(--acc)}
+.sec{font-weight:600;cursor:pointer}
+.sec.sel{box-shadow:0 0 0 3px var(--acc2)}
+.sec.drop{background:var(--acc2)}
+.leaf{font-size:13px;cursor:grab;max-width:290px}
+.leaf .t{overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+.dot.ok{background:var(--ok)}.dot.busy{background:var(--s3)}.dot.err{background:var(--bad)}
+.x{color:var(--mute);cursor:pointer;padding:0 3px;border:none;background:none}
+.x:hover{color:var(--bad)}
+/* chat */
+.chat{border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;height:380px}
+.msgs{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+.m{padding:8px 10px;border-radius:10px;max-width:92%;white-space:pre-wrap;word-break:break-word}
+.m.user{align-self:flex-end;background:var(--acc2)}
+.m.assistant{align-self:flex-start;background:var(--bg);border:1px solid var(--line)}
+.m .acts{margin-top:6px}
+.chatin{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}
+.chatin textarea{min-height:40px;height:40px}
+.link{border:1px solid var(--line);border-radius:10px;padding:8px;margin-top:8px}
+.link a{color:var(--acc);word-break:break-all;font-size:13px}
+.preview{border:1px solid var(--line);border-radius:10px;background:#fff;color:#222;padding:0;max-height:640px;overflow:auto}
+.post textarea{min-height:130px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;display:none;z-index:20;max-width:80vw}
+#toast.bad{background:var(--bad);color:#fff}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);width:min(640px,94vw);padding:20px}
+dialog::backdrop{background:#0008}
+.empty{text-align:center;padding:70px 20px}
+</style>
+</head>
+<body>
+<header>
+  <h1>✉️ Newsletter Studio</h1>
+  <div id="ptabs"></div>
+  <button id="newp">+ New project</button>
+  <button id="settingsb">⚙ Settings</button>
+  <button id="logout" class="sm">Sign out</button>
+</header>
+<main id="main"></main>
+<div id="toast"></div>
+<dialog id="dlg"></dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+const $ =(s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S = {projects: [], settings: {}}, pid = null, tab = 'workflow', selSec = null, chatMode = 'style';
+const SEC_COLORS = ['var(--s1)', 'var(--s2)', 'var(--s3)'];
+
+const SB = window.supabase.createClient(CONFIG.url, CONFIG.key);
+const rid = () => Math.random().toString(36).slice(2, 12);
+function newProject(name) {
+  return {id: rid(), name, subject: '', intro: '', outro: '', subscribers: '', linkedin: [], archive_url: '',
+    sections: ['Headlines', 'Deep Dive', 'Takeaways'].map(title => ({id: rid(), title, style: '', draft: '', links: [], styleChat: [], refineChat: []}))};
+}
+async function fn(route, body = {}) {
+  const {data, error} = await SB.functions.invoke('api', {body: {route, ...body}});
+  if (error) { let m = error.message; try { m = (await error.context.json()).error || m; } catch {} throw new Error(m); }
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+async function api(path, body) {
+  const chk = r => { if (r.error) throw new Error(r.error.message); return r; };
+  switch (path) {
+    case 'state': {
+      const [rows, settings] = await Promise.all([SB.from('projects').select('data').order('updated_at').then(chk), fn('settings-get')]);
+      return {projects: rows.data.map(r => r.data), settings};
+    }
+    case 'projects': { const p = newProject(body.name || 'Untitled'); await SB.from('projects').insert({id: p.id, data: p}).then(chk); return p; }
+    case 'project/save': await SB.from('projects').upsert({id: body.project.id, data: body.project, updated_at: new Date().toISOString()}).then(chk); return {ok: true};
+    case 'project/delete': await SB.from('projects').delete().eq('id', body.id).then(chk); return {ok: true};
+    case 'settings': return fn('settings-save', {values: body});
+    default: return fn(path, body); // fetch, llm, send
+  }
+}
+function toast(msg, bad) { const t = $('#toast'); t.textContent = msg; t.className = bad ? 'bad' : ''; t.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = 'none', bad ? 7000 : 2500); }
+async function busy(btn, fn) { const old = btn.textContent; btn.disabled = true; btn.textContent = '…working'; try { return await fn(); } catch (e) { toast(e.message, true); } finally { btn.disabled = false; btn.textContent = old; } }
+
+const proj = () => S.projects.find(p => p.id === pid);
+const section = id => proj().sections.find(s => s.id === id);
+let saveT; function save() { clearTimeout(saveT); saveT = setTimeout(() => api('project/save', {project: proj()}).catch(e => toast(e.message, true)), 400); }
+const domain = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+
+/* ---------- AI helpers ---------- */
+const llm = (system, messages) => api('llm', {system, messages}).then(r => r.text);
+const FORMAT = 'Formatting: plain text with light markdown only - "- " bullets, **bold**, and [link text](url) links. No headings, no preamble, no code fences.';
+function styleOf(sec) { return sec.style || 'Clear, concise, friendly newsletter writing.'; }
+async function summarizeLink(link) {
+  link.status = 'busy'; renderMap();
+  try {
+    const f = await api('fetch', {url: link.url});
+    if (!link.title) link.title = f.title || domain(link.url);
+    link.summary = await llm('You summarise web articles for a newsletter writer. Give 3-4 sentences covering the key facts, numbers and why it matters. Plain text, no preamble.',
+      [{role: 'user', content: `Title: ${f.title}\nURL: ${link.url}\n\n${f.text}`}]);
+    link.status = 'ok';
+  } catch (e) { link.status = 'err'; link.err = e.message; toast(`${domain(link.url)}: ${e.message}`, true); }
+  save(); render();
+}
+
+/* ---------- top bar ---------- */
+function renderTabs() {
+  $('#ptabs').innerHTML = S.projects.map(p => `<button class="ptab ${p.id === pid ? 'on' : ''}" data-id="${p.id}">${esc(p.name)}</button>`).join('');
+  $('#ptabs').onclick = e => { const b = e.target.closest('.ptab'); if (b) { pid = b.dataset.id; selSec = null; tab = 'workflow'; render(); } };
+}
+$('#newp').onclick = async () => {
+  const name = prompt('Name of the newsletter / topic?'); if (!name) return;
+  const p = await api('projects', {name}); S.projects.push(p); pid = p.id; selSec = null; tab = 'workflow'; render();
+};
+
+/* ---------- main render ---------- */
+function render() {
+  renderTabs();
+  const m = $('#main');
+  if (!proj()) { m.innerHTML = `<div class="empty card"><h2>Welcome 👋</h2><p class="hint">Each newsletter topic is its own project, shown as a tab above.</p><button class="p" id="first">Create your first project</button></div>`; $('#first').onclick = () => $('#newp').click(); return; }
+  const keepScroll = scrollY;
+  m.innerHTML = `<div class="sub">${[['workflow','1 · Workflow'],['newsletter','2 · Newsletter'],['linkedin','3 · LinkedIn posts'],['audience','Audience']].map(([k,l]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}
+    <span style="flex:1"></span><button id="delp" class="sm">Delete project</button></div><div id="body"></div>`;
+  m.querySelector('.sub').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { tab = b.dataset.t; render(); } };
+  $('#delp').onclick = async () => { if (confirm(`Delete "${proj().name}" and everything in it?`)) { await api('project/delete', {id: pid}); S.projects = S.projects.filter(p => p.id !== pid); pid = S.projects[0]?.id; render(); } };
+  ({workflow: renderWorkflow, newsletter: renderNewsletter, linkedin: renderLinkedIn, audience: renderAudience})[tab]();
+  scrollTo(0, keepScroll);
+}
+
+/* ---------- workflow: mind map ---------- */
+function renderWorkflow() {
+  $('#body').innerHTML = `<div class="card" id="mapwrap"><div id="map"></div></div>
+    <p class="hint">Click a section to work on it. Rename anything by editing its text. Drag a link onto another section to move it.</p><div id="secpanel"></div>`;
+  renderMap(); renderSecPanel();
+}
+function renderMap() {
+  const map = $('#map'); if (!map) return; const p = proj();
+  const ROW = 38, GAP = 18, X1 = 24, X2 = 250, X3 = 470;
+  let y = 12; const secs = p.sections.map(s => { const h = Math.max(1, s.links.length) * ROW; const o = {s, top: y, h, cy: y + h / 2}; y += h + GAP; return o; });
+  const H = y, rootY = H / 2;
+  let svg = '', nodes = '';
+  nodes += `<div class="node root" style="left:${X1}px;top:${rootY - 20}px"><span class="t" contenteditable="plaintext-only" data-edit="proj">${esc(p.name)}</span></div>`;
+  secs.forEach((o, i) => {
+    const c = SEC_COLORS[i % 3];
+    svg += `<path d="M${X1 + 150} ${rootY} C ${X1 + 200} ${rootY}, ${X2 - 40} ${o.cy}, ${X2} ${o.cy}" stroke="${c}" stroke-width="3" fill="none"/>`;
+    nodes += `<div class="node sec ${o.s.id === selSec ? 'sel' : ''}" data-sec="${o.s.id}" style="left:${X2}px;top:${o.cy - 20}px;border-color:${c}"><span class="t" contenteditable="plaintext-only" data-edit="sec" data-id="${o.s.id}">${esc(o.s.title)}</span></div>`;
+    o.s.links.forEach((l, j) => {
+      const ly = o.top + j * ROW + ROW / 2;
+      svg += `<path d="M${X2 + 130} ${o.cy} C ${X2 + 170} ${o.cy}, ${X3 - 40} ${ly}, ${X3} ${ly}" stroke="${c}" stroke-width="2" fill="none" opacity=".7"/>`;
+      nodes += `<div class="node leaf" draggable="true" data-link="${l.id}" data-from="${o.s.id}" style="left:${X3}px;top:${ly - 17}px" title="${esc(l.summary || l.url)}"><span class="dot ${l.status || ''}"></span><span class="t" contenteditable="plaintext-only" data-edit="link" data-id="${l.id}" data-sec="${o.s.id}">${esc(l.title || domain(l.url))}</span><button class="x" data-del="${l.id}" data-sec="${o.s.id}">×</button></div>`;
+    });
+    if (!o.s.links.length) nodes += `<div class="node leaf" style="left:${X3}px;top:${o.cy - 17}px;border-style:dashed;color:var(--mute);cursor:pointer" data-addto="${o.s.id}">+ paste links</div>`;
+  });
+  map.style.height = H + 'px';
+  map.innerHTML = `<svg width="760" height="${H}">${svg}</svg>${nodes}`;
+  map.onclick = e => {
+    if (e.target.dataset.del) { const s = section(e.target.dataset.sec); s.links = s.links.filter(l => l.id !== e.target.dataset.del); save(); render(); return; }
+    const add = e.target.closest('[data-addto]'); if (add) { selSec = add.dataset.addto; renderMap(); renderSecPanel(); $('#paste')?.focus(); return; }
+    const sn = e.target.closest('[data-sec]'); if (sn) { selSec = sn.dataset.sec; renderMap(); renderSecPanel(); }
+  };
+  map.onfocusout = e => {
+    const d = e.target.dataset; if (!d.edit) return; const v = e.target.textContent.trim(); if (!v) return render();
+    if (d.edit === 'proj') proj().name = v; else if (d.edit === 'sec') section(d.id).title = v; else section(d.sec).links.find(l => l.id === d.id).title = v;
+    save(); if (d.edit !== 'link') renderTabs();
+  };
+  map.onkeydown = e => { if (e.key === 'Enter' && e.target.dataset.edit) { e.preventDefault(); e.target.blur(); } };
+  map.ondragstart = e => { const n = e.target.closest('[data-link]'); if (n) e.dataTransfer.setData('text/plain', n.dataset.link + '|' + n.dataset.from); };
+  map.ondragover = e => { const n = e.target.closest('[data-sec]'); if (n) { e.preventDefault(); n.classList.add('drop'); } };
+  map.ondragleave = e => e.target.closest('[data-sec]')?.classList.remove('drop');
+  map.ondrop = e => {
+    const n = e.target.closest('[data-sec]'); if (!n) return; e.preventDefault();
+    const [lid, from] = e.dataTransfer.getData('text/plain').split('|'); if (from === n.dataset.sec) return render();
+    const fs = section(from), l = fs.links.find(x => x.id === lid); fs.links = fs.links.filter(x => x !== l); section(n.dataset.sec).links.push(l); save(); render();
+  };
+}
+
+/* ---------- workflow: section panel ---------- */
+function chatHTML(sec) {
+  const msgs = chatMode === 'style' ? sec.styleChat : sec.refineChat;
+  const btn = chatMode === 'style' ? 'Use as master prompt' : 'Apply to draft';
+  return `<div class="msgs" id="msgs">${msgs.length ? msgs.map((m, i) => `<div class="m ${m.role}">${esc(m.content)}${m.role === 'assistant' ? `<div class="acts"><button class="sm" data-apply="${i}">${btn}</button></div>` : ''}</div>`).join('')
+    : `<div class="hint">${chatMode === 'style' ? 'Describe the voice you want for this section (tone, length, audience, structure). I\'ll turn it into a master prompt you can save.' : 'Ask for changes to the draft: "shorter", "punchier opening", "more British"… I\'ll rewrite it and you can apply the result.'}</div>`}</div>
+    <div class="chatin"><textarea id="cin" placeholder="${chatMode === 'style' ? 'Describe the style…' : 'How should I change the draft?'}"></textarea><button class="p" id="csend">Send</button></div>`;
+}
+function renderSecPanel() {
+  const box = $('#secpanel'); if (!box) return;
+  const sec = selSec && proj().sections.find(s => s.id === selSec);
+  if (!sec) { box.innerHTML = `<div class="card hint">Select one of the three sections in the map above to add links, set its style and write its content.</div>`; return; }
+  box.innerHTML = `<div class="grid">
+   <div class="card">
+    <h2>${esc(sec.title)} — sources</h2>
+    <textarea id="paste" placeholder="Paste one or more links (one per line)" style="min-height:70px"></textarea>
+    <div class="row" style="margin-top:6px"><button class="p" id="addlinks">Add &amp; summarise</button><span class="hint">Pages are read and summarised by your chosen AI.</span></div>
+    ${sec.links.map(l => `<div class="link"><div class="row"><span class="dot ${l.status || ''}"></span><b style="flex:1">${esc(l.title || domain(l.url))}</b><button class="sm" data-re="${l.id}">↻</button></div>
+      <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a>
+      <textarea data-sum="${l.id}" style="min-height:70px;margin-top:6px" placeholder="${l.err ? esc(l.err) : 'Summary (editable)'}">${esc(l.summary || '')}</textarea></div>`).join('')}
+    <label>Draft (editable)</label>
+    <textarea id="draft" style="min-height:230px" placeholder="Click “Write draft” or type here…">${esc(sec.draft)}</textarea>
+    <div class="row" style="margin-top:6px"><button class="p" id="gen">✨ Write draft from sources</button></div>
+   </div>
+   <div class="card">
+    <div class="row" style="margin-bottom:8px"><button class="sm ${chatMode === 'style' ? 'p' : ''}" data-cm="style">1 · Style chat</button><button class="sm ${chatMode === 'refine' ? 'p' : ''}" data-cm="refine">2 · Refine words</button></div>
+    <label style="margin-top:0">Master style prompt for “${esc(sec.title)}”</label>
+    <textarea id="style" style="min-height:90px" placeholder="Written by the style chat below — or type your own.">${esc(sec.style)}</textarea>
+    <div class="chat" style="margin-top:10px">${chatHTML(sec)}</div>
+   </div></div>`;
+  const msgs = $('#msgs'); msgs.scrollTop = msgs.scrollHeight;
+  $('#paste').onkeydown = null;
+  $('#addlinks').onclick = e => busy(e.target, async () => {
+    const urls = $('#paste').value.split(/\s+/).filter(u => /^https?:\/\//.test(u)); if (!urls.length) return toast('Paste at least one http(s) link', true);
+    const added = urls.map(url => ({id: Math.random().toString(36).slice(2, 10), url, title: '', summary: '', status: 'busy'})); sec.links.push(...added); save(); render();
+    for (const l of added) await summarizeLink(l);
+  });
+  box.querySelectorAll('[data-re]').forEach(b => b.onclick = () => summarizeLink(sec.links.find(l => l.id === b.dataset.re)));
+  box.querySelectorAll('[data-sum]').forEach(t => t.oninput = () => { sec.links.find(l => l.id === t.dataset.sum).summary = t.value; save(); });
+  $('#draft').oninput = e => { sec.draft = e.target.value; save(); };
+  $('#style').oninput = e => { sec.style = e.target.value; save(); };
+  box.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { chatMode = b.dataset.cm; renderSecPanel(); });
+  $('#gen').onclick = e => busy(e.target, async () => {
+    const src = sec.links.map(l => `- ${l.title || domain(l.url)} (${l.url}): ${l.summary}`).join('\n'); if (!src) return toast('Add some links first', true);
+    sec.draft = await llm(`You write the "${sec.title}" section of the newsletter "${proj().name}".\nStyle guide:\n${styleOf(sec)}\n${FORMAT}`,
+      [{role: 'user', content: `Write this section from these sources. Link each item to its source URL.\n\n${src}`}]);
+    save(); renderSecPanel();
+  });
+  $('#csend').onclick = e => busy(e.target, () => sendChat(sec));
+  $('#cin').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#csend').click(); } };
+  box.querySelectorAll('[data-apply]').forEach(b => b.onclick = () => {
+    const m = (chatMode === 'style' ? sec.styleChat : sec.refineChat)[+b.dataset.apply].content;
+    const fence = m.match(/```(?:\w*)\n([\s\S]*?)```/); const text = (fence ? fence[1] : m).trim();
+    if (chatMode === 'style') sec.style = text; else sec.draft = text; save(); renderSecPanel(); toast(chatMode === 'style' ? 'Master prompt saved' : 'Draft updated');
+  });
+}
+async function sendChat(sec) {
+  const v = $('#cin').value.trim(); if (!v) return;
+  const chat = chatMode === 'style' ? sec.styleChat : sec.refineChat; chat.push({role: 'user', content: v}); save(); renderSecPanel();
+  const system = chatMode === 'style'
+    ? `You help the user write a MASTER CONTEXT PROMPT that will steer an AI writing the "${sec.title}" section of the newsletter "${proj().name}". Ask at most one short clarifying question if essential; otherwise propose the prompt inside a single \`\`\` code block (voice, tone, length, structure, do/don't), then one line inviting tweaks. Current master prompt: ${sec.style || '(none yet)'}`
+    : `You are editing the "${sec.title}" section of the newsletter "${proj().name}".\nStyle guide:\n${styleOf(sec)}\n\nCurrent draft:\n${sec.draft || '(empty)'}\n\nSources:\n${sec.links.map(l => `- ${l.title} (${l.url}): ${l.summary}`).join('\n')}\n\nWhen the user asks for a change, reply with ONLY the full revised section text. ${FORMAT}`;
+  try { chat.push({role: 'assistant', content: await llm(system, chat.map(m => ({role: m.role, content: m.content})))}); }
+  catch (e) { chat.pop(); toast(e.message, true); }
+  save(); renderSecPanel();
+}
+
+/* ---------- newsletter ---------- */
+function inline(t) { return esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" style="color:#4f46e5">$1</a>'); }
+function mdHTML(t) {
+  let out = '', list = false;
+  for (const line of (t || '').split('\n')) {
+    const li = line.match(/^\s*[-*•]\s+(.*)/);
+    if (li) { if (!list) { out += '<ul style="padding-left:20px">'; list = true; } out += `<li style="margin:6px 0">${inline(li[1])}</li>`; continue; }
+    if (list) { out += '</ul>'; list = false; }
+    if (line.trim()) out += `<p style="margin:10px 0">${inline(line)}</p>`;
+  }
+  return out + (list ? '</ul>' : '');
+}
+const plain = t => (t || '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '$1 ($2)');
+function emailHTML(p) {
+  const colors = ['#0ea5e9', '#8b5cf6', '#f59e0b'];
+  return `<div style="background:#f4f5f9;padding:24px 0;font-family:Arial,Helvetica,sans-serif"><div style="max-width:620px;margin:0 auto;background:#fff;border-radius:10px;padding:32px;color:#222;line-height:1.6;font-size:16px">
+  <h1 style="margin:0 0 4px;font-size:26px">${esc(p.name)}</h1>${p.intro ? `<div style="color:#555">${mdHTML(p.intro)}</div>` : ''}
+  ${p.sections.filter(s => s.draft.trim()).map((s, i) => `<h2 style="border-left:4px solid ${colors[i % 3]};padding-left:10px;font-size:20px;margin:28px 0 8px">${esc(s.title)}</h2>${mdHTML(s.draft)}`).join('')}
+  ${p.outro ? `<hr style="border:none;border-top:1px solid #eee;margin:28px 0">${mdHTML(p.outro)}` : ''}
+  <p style="font-size:12px;color:#999;margin-top:28px">You're receiving this because you subscribed. Reply with “unsubscribe” to opt out.</p></div></div>`;
+}
+const emailText = p => [p.name, plain(p.intro), ...p.sections.filter(s => s.draft.trim()).map(s => `\n== ${s.title} ==\n${plain(s.draft)}`), plain(p.outro), '\nReply with "unsubscribe" to opt out.'].join('\n');
+const recipients = p => p.subscribers.split(/[\s,;]+/).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+
+function renderNewsletter() {
+  const p = proj();
+  $('#body').innerHTML = `<div class="grid"><div class="card">
+    <label style="margin-top:0">Subject line</label><div class="row"><input id="subj" value="${esc(p.subject)}" style="flex:1"><button id="subjai" class="sm">✨ Suggest</button></div>
+    <label>Intro (optional)</label><textarea id="intro">${esc(p.intro)}</textarea>
+    <label>Sign-off (optional)</label><textarea id="outro">${esc(p.outro)}</textarea>
+    <p class="hint">Sections come from the Workflow tab. Currently ${p.sections.filter(s => s.draft.trim()).length}/3 have content.</p>
+    <div class="row"><button id="test">Send test to me</button><button class="p" id="sendall">Send to ${recipients(p).length} subscribers</button><button id="copyhtml">Copy HTML</button></div>
+   </div><div class="preview" id="prev">${emailHTML(p)}</div></div>`;
+  const bind = (id, key) => $(id).oninput = e => { p[key] = e.target.value; save(); $('#prev').innerHTML = emailHTML(p); };
+  bind('#subj', 'subject'); bind('#intro', 'intro'); bind('#outro', 'outro');
+  $('#subjai').onclick = e => busy(e.target, async () => { p.subject = (await llm('Write ONE catchy email subject line (max 60 chars). Output only the line.', [{role: 'user', content: emailText(p).slice(0, 4000)}])).replace(/^["']|["']$/g, ''); save(); renderNewsletter(); });
+  $('#copyhtml').onclick = () => navigator.clipboard.writeText(emailHTML(p)).then(() => toast('HTML copied'));
+  const send = (btn, to) => busy(btn, async () => { if (!p.subject.trim()) return toast('Add a subject line first', true); const r = await api('send', {subject: p.subject, html: emailHTML(p), text: emailText(p), to}); toast(`Sent to ${r.sent} recipient(s) ✔`); });
+  $('#test').onclick = e => send(e.target, [S.settings.smtp.email].filter(Boolean).length ? [S.settings.smtp.email] : (toast('Set your email in Settings first', true), []));
+  $('#sendall').onclick = e => { const to = recipients(p); if (!to.length) return toast('Add subscribers in the Audience tab', true); if (to.length > 450) return toast('Gmail allows ~500 emails/day; split the list.', true); if (confirm(`Send "${p.subject}" to ${to.length} people?`)) send(e.target, to); };
+}
+
+/* ---------- linkedin ---------- */
+const fullPost = x => x.text.trim() + (x.url ? '\n\n' + x.url : '');
+async function genPost(p, sec, link) {
+  const text = await llm(`You write LinkedIn posts for the newsletter "${p.name}". Voice guide:\n${styleOf(sec)}\nWrite a post of 60-120 words: a strong first-line hook, 1-2 key insights, a question or call to action, and 2-3 relevant hashtags at the end. Plain text, no markdown, do NOT include any URL (it is attached separately). Output only the post.`,
+    [{role: 'user', content: `Source: ${link.title}\nSummary: ${link.summary}\nNewsletter section draft for context:\n${sec.draft.slice(0, 1500)}`}]);
+  return {id: Math.random().toString(36).slice(2, 10), text, url: link.url, label: link.title || domain(link.url), sec: sec.title};
+}
+function renderLinkedIn() {
+  const p = proj();
+  $('#body').innerHTML = `<div class="card"><div class="row"><h2 style="flex:1;margin:0">LinkedIn-ready posts</h2><button class="p" id="genall">✨ Generate from newsletter links</button><button id="teaser">+ Newsletter teaser post</button></div>
+  <p class="hint">One post per summarised link (written in that section's style) with the link attached. “Open in LinkedIn” opens your composer pre-filled — review and hit Post. This is free and needs no LinkedIn API approval.</p></div>
+  <div id="posts" class="grid" style="margin-top:16px"></div>`;
+  const draw = () => $('#posts').innerHTML = p.linkedin.map(x => `<div class="card post" data-id="${x.id}"><div class="row"><span class="hint" style="flex:1">${esc(x.sec)} · ${esc(x.label)}</span><button class="x" data-a="del">×</button></div>
+    <textarea data-a="text">${esc(x.text)}</textarea><label>Attached link</label><input data-a="url" value="${esc(x.url)}">
+    <div class="row" style="margin-top:8px"><span class="hint" style="flex:1">${fullPost(x).length}/3000</span><button class="sm" data-a="regen">↻ Redo</button><button class="sm" data-a="copy">Copy</button><button class="p sm" data-a="open">Open in LinkedIn ↗</button></div></div>`).join('') || '<p class="hint">No posts yet.</p>';
+  draw();
+  $('#posts').oninput = e => { const x = p.linkedin.find(i => i.id === e.target.closest('.post').dataset.id); x[e.target.dataset.a] = e.target.value; save(); };
+  $('#posts').onclick = async e => {
+    const a = e.target.dataset.a; if (!a) return; const x = p.linkedin.find(i => i.id === e.target.closest('.post').dataset.id);
+    if (a === 'del') { p.linkedin = p.linkedin.filter(i => i !== x); save(); draw(); }
+    if (a === 'copy') navigator.clipboard.writeText(fullPost(x)).then(() => toast('Copied'));
+    if (a === 'open') { navigator.clipboard.writeText(fullPost(x)); window.open('https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent(fullPost(x)), '_blank'); toast('Opened LinkedIn — text also copied in case it doesn\'t prefill'); }
+    if (a === 'regen') busy(e.target, async () => { const sec = p.sections.find(s => s.title === x.sec) || p.sections[0]; const l = sec.links.find(l => l.url === x.url) || {title: x.label, summary: x.text, url: x.url}; x.text = (await genPost(p, sec, l)).text; save(); draw(); });
+  };
+  $('#genall').onclick = e => busy(e.target, async () => {
+    const todo = p.sections.flatMap(s => s.links.filter(l => l.summary && !p.linkedin.some(x => x.url === l.url)).map(l => [s, l])); if (!todo.length) return toast('Nothing new — add & summarise links first (or all are done)', true);
+    for (const [s, l] of todo) { p.linkedin.push(await genPost(p, s, l)); save(); draw(); }
+  });
+  $('#teaser').onclick = e => busy(e.target, async () => {
+    const text = await llm(`You write LinkedIn posts promoting the newsletter "${p.name}". 60-100 words, hook first, tease what's inside, invite people to read/subscribe, 2-3 hashtags. Plain text, no URL. Output only the post.`, [{role: 'user', content: emailText(p).slice(0, 4000)}]);
+    p.linkedin.unshift({id: Math.random().toString(36).slice(2, 10), text, url: p.archive_url || '', label: 'Newsletter teaser', sec: p.name}); save(); draw();
+  });
+}
+
+/* ---------- audience ---------- */
+function renderAudience() {
+  const p = proj();
+  $('#body').innerHTML = `<div class="card" style="max-width:640px"><h2>Subscribers</h2><textarea id="subs" style="min-height:220px" placeholder="One email per line (or comma-separated)">${esc(p.subscribers)}</textarea>
+  <p class="hint" id="cnt">${recipients(p).length} valid addresses</p>
+  <label>Link to read online (used in the LinkedIn teaser post)</label><input id="arch" value="${esc(p.archive_url)}" placeholder="https://…">
+  <p class="hint">Only add people who opted in. Gmail's free limit is about 500 emails per day.</p></div>`;
+  $('#subs').oninput = e => { p.subscribers = e.target.value; $('#cnt').textContent = recipients(p).length + ' valid addresses'; save(); };
+  $('#arch').oninput = e => { p.archive_url = e.target.value; save(); };
+}
+
+/* ---------- settings ---------- */
+$('#settingsb').onclick = () => {
+  const a = S.settings.ai, m = S.settings.smtp, d = $('#dlg');
+  d.innerHTML = `<h2>Settings</h2><p class="hint">Stored only in data.json on this computer.</p>
+  <label>AI provider (for summaries, drafts &amp; chats)</label><select id="prov"><option value="gemini">Google Gemini — free tier (recommended)</option><option value="anthropic">Anthropic Claude — paid API key</option></select>
+  <div id="pf"></div>
+  <label>Sending email (Gmail)</label><input id="se" value="${esc(m.email)}" placeholder="you@gmail.com">
+  <label>Gmail app password</label><input id="sp" type="password" placeholder="${m.app_password_set ? '•••• saved (leave blank to keep)' : '16-character app password'}">
+  <p class="hint">Create one at myaccount.google.com/apppasswords (needs 2-step verification). It's safer than your real password.</p>
+  <label>Sender name</label><input id="sn" value="${esc(m.from_name)}" placeholder="Your Newsletter">
+  <div class="row" style="margin-top:16px"><button class="p" id="ssave">Save</button><button id="stest">Test AI</button><button id="sclose">Close</button></div>`;
+  $('#prov').value = a.provider;
+  const pf = () => { const v = $('#prov').value; $('#pf').innerHTML = v === 'gemini' ? `<label>Gemini API key</label><input id="k" type="password" placeholder="${a.gemini_key_set ? '•••• saved' : 'Get a free key at aistudio.google.com/apikey'}"><label>Model</label><input id="mo" value="${esc(a.gemini_model)}">`
+    : v === 'ollama' ? `<label>Ollama URL</label><input id="k" value="${esc(a.ollama_url)}"><label>Model</label><input id="mo" value="${esc(a.ollama_model)}"><p class="hint">Install from ollama.com, then run: ollama pull llama3.2</p>`
+    : `<label>Anthropic API key</label><input id="k" type="password" placeholder="${a.anthropic_key_set ? '•••• saved' : 'sk-ant-…'}"><label>Model</label><input id="mo" value="${esc(a.anthropic_model)}">`; };
+  pf(); $('#prov').onchange = pf;
+  const collect = () => { const v = $('#prov').value, k = $('#k').value, mo = $('#mo').value; return {ai: {provider: v, ...(v === 'gemini' ? {gemini_key: k, gemini_model: mo} : v === 'ollama' ? {ollama_url: k, ollama_model: mo} : {anthropic_key: k, anthropic_model: mo})}, smtp: {email: $('#se').value.trim(), app_password: $('#sp').value, from_name: $('#sn').value}}; };
+  const persist = async () => { await api('settings', collect()); S = await api('state'); };
+  $('#ssave').onclick = e => busy(e.target, async () => { await persist(); toast('Saved'); d.close(); });
+  $('#stest').onclick = e => busy(e.target, async () => { await persist(); toast('AI says: ' + (await llm('Reply with one short friendly sentence.', [{role: 'user', content: 'Say hello.'}]))); });
+  $('#sclose').onclick = () => d.close(); d.showModal();
+};
+
+async function start() {
+  try { S = await api('state'); } catch (e) { return toast(e.message, true); }
+  pid = S.projects[0]?.id; render();
+  if (!S.settings.ai.gemini_key_set && S.settings.ai.provider === 'gemini') setTimeout(() => toast('Open ⚙ Settings to add your free AI key and email'), 800);
+}
+function showLogin() {
+  const d = $('#dlg'); d.oncancel = e => e.preventDefault();
+  d.innerHTML = `<h2>Sign in</h2><p class="hint">Private newsletter studio. Use the email you registered with. First time? Press “Create account”, confirm the email Supabase sends, then sign in.</p>
+  <label>Email</label><input id="le" type="email" autocomplete="username"><label>Password</label><input id="lp" type="password" autocomplete="current-password">
+  <div class="row" style="margin-top:14px"><button class="p" id="lin">Sign in</button><button id="lup">Create account</button></div>`;
+  const creds = () => ({email: $('#le').value.trim(), password: $('#lp').value});
+  $('#lin').onclick = e => busy(e.target, async () => { const {error} = await SB.auth.signInWithPassword(creds()); if (error) throw error; d.oncancel = null; d.close(); start(); });
+  $('#lup').onclick = e => busy(e.target, async () => { const {error} = await SB.auth.signUp(creds()); if (error) throw error; toast('Check your inbox to confirm, then sign in'); });
+  $('#lp').onkeydown = e => e.key === 'Enter' && $('#lin').click();
+  d.showModal();
+}
+$('#logout').onclick = async () => { await SB.auth.signOut(); location.reload(); };
+(async () => { const {data} = await SB.auth.getSession(); data.session ? start() : showLogin(); })();
+</script>
+</body>
+</html>
